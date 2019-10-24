@@ -18,8 +18,8 @@ DigitalIO::DigitalIO() {}
 
 void DigitalIO::initPins() {
     pinMode(this->switch_input, INPUT);
-    pinMode(this->switch_led, OUTPUT);
-    digitalWrite(this->switch_led, LOW);
+    // pinMode(this->switch_led, OUTPUT);
+    // digitalWrite(this->switch_led, LOW);
     setProgramMode();
 
     LOG_DEBUG("DIGITAL IO: Initialized pins\n");
@@ -27,7 +27,7 @@ void DigitalIO::initPins() {
 }
 
 void DigitalIO::setProgramMode() {
-    LOG_DEBUG("DIGITAL IO: Setting IO to program mode (output)");
+    LOG_DEBUG("DIGITAL IO: Setting IO to program mode (output)\n");
 
     // Data transfer
     pinMode(this->data_line, OUTPUT);
@@ -37,30 +37,40 @@ void DigitalIO::setProgramMode() {
 }
 
 void DigitalIO::setVerifyMode() {
-    LOG_DEBUG("DIGITAL IO: Setting IO to verify mode (input)");
+    LOG_DEBUG("DIGITAL IO: Setting IO to verify mode (input)\n");
 
     // Data verification
     pinMode(this->data_line, INPUT);
-    pinMode(this->clock, INPUT);
+    pinMode(this->clock, OUTPUT);
 }
 
-void DigitalIO::updateSwitchLED() {
-    const int previous_state = digitalRead(this->switch_led);
-    const int switch_state = digitalRead(this->switch_input);
-    
-    // Switch is pulled up to HIGH, if pressed, goes LOW
-    // LED should mimick switch state (active/passive)
-    if (previous_state == switch_state) digitalWrite(this->switch_led, !switch_state);          
-    
+void DigitalIO::readButton() {
+    const int new_switch_state = digitalRead(this->switch_input);
+
     // If LED was off, and switch is now low, then this is a new press
-    if (previous_state == LOW && switch_state == LOW) {
-        LOG_DEBUG("DIGITAL IO: Button press detected\n");
+    if (switch_state == HIGH && new_switch_state == LOW) {
+        LOG_DEBUG("DIGITAL IO: Button press detected [debounce delay]\n");
+        delay(1000);
         this->button_callback();
     }
+
+    switch_state = new_switch_state;
 }
 
 void DigitalIO::set_button_callback(ButtonCallback callback){
     this->button_callback = callback;
+}
+
+void DigitalIO::setClockLow() {
+    digitalWrite(this->clock, LOW);
+}
+        
+void DigitalIO::setClockHigh() {
+    digitalWrite(this->clock, HIGH);
+}
+        
+void DigitalIO::setData(const bool& bit) {
+    digitalWrite(this->data_line, bit);
 }
 
 // Verification

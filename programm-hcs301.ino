@@ -22,9 +22,9 @@ void setup() {
 
   keeloq_interface_ptr = std::unique_ptr<HCS301Interface>(new HCS301Interface());
   void (*callback_ptr)() = []() { keeloq_interface_ptr->sendCode(); };  // Should check if ptr is non-null
-  DigitalIO::GetInstance().updateSwitchLED();
+  DigitalIO::GetInstance().set_button_callback(callback_ptr);
 }
 
 void loop() {
-  DigitalIO::GetInstance().updateSwitchLED();
+  DigitalIO::GetInstance().readButton();
 }

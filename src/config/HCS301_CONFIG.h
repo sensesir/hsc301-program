@@ -18,7 +18,7 @@
 #define CRYPT_KEY       std::string("1010101010101010101010101010101010101010101010101010101010101010")      // 64 bits || Try generate using serial number + manufacturers code (micro chip)
 #define SYNC_COUNTER    std::string("0000000000000000")                                                      // 16 bits
 #define RESERVED_16     std::string("0000000000000000")                                                      // 16 bits
-#define SERIAL_NUMBER   std::string("10101100101011011010110010101101")                                      // 32 bits
+#define SERIAL_NUMBER   std::string("00000000000000000000000000000000")                                      // 32 bits
 #define SEED_NUMBER     std::string("10101100101011011010110010101101")                                      // 32 bits
 #define OVERFLOW        std::string("00")
 #define VLOW            std::string("0")
@@ -28,4 +28,4 @@
 #define CONFIG_BITSTREAM_LENGTH 192
 #define WORD_LENGTH 16
 
-#define READ_TIMEOUT    1000 // ms
+#define READ_TIMEOUT    10000 // ms

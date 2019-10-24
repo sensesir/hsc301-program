@@ -26,6 +26,7 @@ class DigitalIO {
         const int switch_led = SWITCH_LED_INDICATOR;
         const int data_line = DATA_LINE;
         const int clock = CLOCK_LINE;
+        int switch_state{1};
         ButtonCallback button_callback;
 
         // Methods
@@ -35,7 +36,7 @@ class DigitalIO {
         static DigitalIO& GetInstance();
         ~DigitalIO() { LOG_DEBUG("DIGITAL IO: Singleton deleted"); };
         void set_button_callback(ButtonCallback callback);
-        void updateSwitchLED();
+        void readButton();
         void setProgramMode();
         void setVerifyMode();
 

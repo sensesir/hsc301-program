@@ -12,6 +12,7 @@ HCS301Interface::HCS301Interface() {}
 
 void HCS301Interface::sendCode() {
     // Send code from config
+    LOG_DEBUG("HCS: Starting code transmission\n");
     const std::string new_code = codeFromConfig();
     if (new_code.length()) sendCode(new_code);
 }
@@ -24,7 +25,7 @@ const std::string HCS301Interface::codeFromConfig() {
     // Validations
     if (CRYPT_KEY.length() != 64)       LOG_RELEASE("Crypt key incorrect length\n");
     if (SYNC_COUNTER.length() != 16)    LOG_RELEASE("Sync counter incorrect length\n"); 
-    if (RESERVED_16.length() != 16)      LOG_RELEASE("Reserved buffer incorrect length\n");
+    if (RESERVED_16.length() != 16)     LOG_RELEASE("Reserved buffer incorrect length\n");
     if (SERIAL_NUMBER.length() != 32)   LOG_RELEASE("Serial number incorrect length\n");
     if (SEED_NUMBER.length() != 32)     LOG_RELEASE("Seed incorrect length\n");
     if (config.length() != 16)          LOG_RELEASE("Config incorrect length\n");
@@ -40,12 +41,14 @@ const std::string HCS301Interface::codeFromConfig() {
 
 void HCS301Interface::sendCode(const std::string bits) {
     LOG_RELEASE("HCS: Sending new code to HCS301 chip\n");
+    DigitalIO::GetInstance().setProgramMode();
     loadNewBitstream(bits);
     sendStartSignal();
 
     int word_counter {0};
 
     // Go through the bitstream until completion
+    LOG_DEBUG("HCS: Write bitstream => ");
     while(!bitstream.empty()) {
         sendNextBit(bitstream.front());
         bitstream.pop();
@@ -54,10 +57,12 @@ void HCS301Interface::sendCode(const std::string bits) {
         if (word_counter >= WORD_LENGTH) {
             word_counter = 0;
             delayMicroseconds(TWC); 
+            LOG_DEBUG(" ");
         }
     }
 
     // Complete
+    LOG_DEBUG("\n");
     LOG_RELEASE("HCS: Completed send\n");
     verifySignal();
 }
@@ -84,10 +89,11 @@ void HCS301Interface::sendNextBit(const bool& next_bit) {
     delayMicroseconds(TCLKH);               // Verify, this is critical
     digital_interface.setClockLow();
     delayMicroseconds(TCLKL);               // Verify, this is critical
+    LOG_DEBUG(next_bit);
 }
 
 void HCS301Interface::loadNewBitstream(const std::string new_stream){
-    LOG_DEBUG("HCS: Loading new input stream");
+    LOG_DEBUG("HCS: Loading new input stream\n");
     bitstream = std::queue<bool>();
     for (char bit : new_stream) {
         if (bit == '0')      bitstream.emplace(false);
@@ -103,11 +109,17 @@ void HCS301Interface::printCurrentBitstream() {
     LOG_DEBUG("HCS: Current bitstream = ");
     std::queue<bool> print_queue(bitstream); 
     
+    int word_counter = 0;
     while (!print_queue.empty()) {
         bool bit = print_queue.front();
         print_queue.pop();
         LOG_DEBUG(bit);
-        LOG_DEBUG(" ");
+        word_counter++;
+
+        if (word_counter >= WORD_LENGTH) {
+            LOG_DEBUG(" ");
+            word_counter = 0;
+        }
     }
 
     LOG_DEBUG("\n");
@@ -118,9 +130,10 @@ void HCS301Interface::printCurrentBitstream() {
  */
 
 void HCS301Interface::verifySignal() {
-    LOG_RELEASE("HCS: Preparing for verification");
+    LOG_RELEASE("HCS: Preparing for verification\n");
     DigitalIO::GetInstance().setVerifyMode();
     verified_bitstream = "";
+    delayMicroseconds(TWC); 
 
     while (verified_bitstream.length() < CONFIG_BITSTREAM_LENGTH) {
         std::string next_bit = nextVerifiedBit();
@@ -141,30 +154,12 @@ const std::string HCS301Interface::nextVerifiedBit() {
     // Look for rising edge on the clock
     DigitalIO& digital_interface = DigitalIO::GetInstance();
     
-    bool read_timeout = false;
-    bool clock_val = false;
-    unsigned long start_millis = millis();
+    digital_interface.setClockHigh();
+    delayMicroseconds(TCLKH);
+    bool next_bit = digital_interface.getDataLineValue();
+    digital_interface.setClockLow();
 
-    while (!clock_val) {
-        clock_val = digital_interface.getClockValue();
-        
-        // Ensure no hang
-        unsigned long current_millis = millis();
-        if ((current_millis - start_millis) > READ_TIMEOUT) {
-            read_timeout = true;
-            break;
-        }
-    }
-
-    if (read_timeout) {
-        LOG_RELEASE("HCS: ERROR => Read timeout");
-        const std::string next_bit{""};
-        return next_bit;
-    }
-
-    // Found rising edge, read data bit
-    bool nextBit = digital_interface.getDataLineValue();
-    if (nextBit) return std::string("1");
+    if (next_bit) return std::string("1");
     else return std::string("0");
 }
 
